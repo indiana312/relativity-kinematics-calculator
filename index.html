@@ -2,509 +2,175 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<!-- Viewport meta: tells mobile browsers to render at device width, not a zoomed-out desktop width. -->
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Relativity Kinematics Calculator</title>
-<link rel="icon" href="data:,"> <!-- Empty icon so browsers don't request a favicon.ico we don't have. -->
+<link rel="icon" href="data:,">
 <style>
-/* =========================================================================
-   Relativity Kinematics Calculator — styles
+/* ---- Base / reset ---- */
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: #1c1e22; }
 
-   This file is organized top-to-bottom in roughly the same order as the
-   page reads: page background, card shell, header, scenario text, status
-   line, the four field rows, the three bottom boxes, the reset button.
-
-   A few colors use `oklch(...)` instead of a hex code like `#4a4f56` —
-   that's just a newer, more precise way to specify a color in modern
-   CSS. You don't need to understand the math behind it; treat it the
-   same as any other color value.
-   ========================================================================= */
-
-/* Makes `width`/`height`/`padding`/`border` all count toward one element's
-   total size everywhere on the page, instead of padding/border adding
-   extra size on top of the width you set. Without this, a lot of the
-   pixel measurements below wouldn't line up correctly. */
-* {
-  box-sizing: border-box;
-}
-
-html, body {
-  margin: 0; /* Browsers add a small default margin around <body> — remove it so our layout starts exactly at the edges. */
-}
-
-body {
-  background: #1c1e22; /* Dark backdrop that the calculator card floats on. */
-}
-
-/* Full-page wrapper: centers the card horizontally and adds breathing
-   room around it. `display: flex; justify-content: center` is a common
-   way to center a block of content. */
-.page {
-  display: flex;
-  justify-content: center;
-  padding: 48px 24px;
-}
-
-/* The calculator card itself — the dark slate rectangle everything else
-   lives inside. Fixed at 1040px wide on purpose (this design does not
-   reflow/resize based on content or viewport width). */
+/* ---- Page + card shell ---- */
+.page { display: flex; justify-content: center; padding: 48px 24px; }
 .ck-card {
-  width: 1040px;
+  width: 100%;
+  max-width: 1040px;          /* fluid, but never wider than the original design */
   border: 1px solid #4a4f56;
   border-radius: 10px;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, .22); /* Soft drop shadow so the card lifts off the page background. */
+  box-shadow: 0 6px 20px rgba(0, 0, 0, .22);
   padding: 44px 48px;
-  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; /* Base font for the whole card; specific bits (math symbols, formulas) switch to Georgia below. */
+  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
   font-size: 18px;
   color: #e8eaed;
   background-color: #383c42;
 }
 
-/* ---- Header: title + subtitle at the top of the card ------------------ */
-
+/* ---- Header ---- */
 .ck-header {
-  display: flex;
-  justify-content: space-between; /* Room for something to sit on the right in the future; currently just pushes the title block to the left. */
-  align-items: flex-end;
-  border-bottom: 2px solid #d7dade;
-  padding-bottom: 16px;
-  margin-bottom: 24px;
+  display: flex; justify-content: space-between; align-items: flex-end;
+  border-bottom: 2px solid #d7dade; padding-bottom: 16px; margin-bottom: 24px;
 }
+.ck-title { font-size: 24px; font-weight: 700; letter-spacing: -.01em; color: #f3f4f5; margin: 0; }
+.ck-subtitle { font-size: 18px; color: #9aa0a6; margin: 6px 0 0; }
 
-.ck-title {
-  font-size: 24px;
-  font-weight: 700;
-  letter-spacing: -.01em;
-  color: #f3f4f5;
-  margin: 0;
-}
+/* ---- Scenario ---- */
+.ck-scenario { font-size: 18px; color: #c2c7cd; line-height: 1.6; margin: 0 0 24px; max-width: 920px; }
+.ck-scenario-lead { font-weight: 700; color: #e8eaed; }
 
-.ck-subtitle {
-  font-size: 18px;
-  color: #9aa0a6;
-  margin: 6px 0 0;
-}
+/* ---- Status line ---- */
+.ck-status { margin: 0 0 14px; font-size: 18px; color: #9aa0a6; }
+.ck-status--error { color: oklch(0.74 0.16 25); font-weight: 500; }
 
-/* ---- Scenario paragraph ------------------------------------------------ */
-
-.ck-scenario {
-  font-size: 18px;
-  color: #c2c7cd;
-  line-height: 1.6;
-  margin: 0 0 24px;
-  max-width: 920px; /* Keeps the paragraph from stretching edge-to-edge, for readability. */
-}
-
-.ck-scenario-lead {
-  font-weight: 700; /* Bolds just the "Scenario:" lead-in word. */
-  color: #e8eaed;
-}
-
-/* ---- Status line (e.g. "Solved — ...", or a red error message) -------- */
-
-.ck-status {
-  margin: 0 0 14px;
-  font-size: 18px;
-  color: #9aa0a6; /* Default (non-error) grey color. */
-}
-
-/* Added on top of .ck-status by script.js when there's a validation
-   error — see `statusEl.classList.toggle('ck-status--error', ...)` in
-   script.js's render() function. */
-.ck-status--error {
-  color: oklch(0.74 0.16 25); /* A red/orange tone. */
-  font-weight: 500;
-}
-
-/* ---- The four kinematics rows (Acceleration / Time / Velocity / Distance) ---- */
-
-.ck-fields {
-  border-top: 1px solid #5a606a; /* Top border of the whole list; each row below supplies its own bottom border. */
-}
-
-.ck-field-row {
-  border-bottom: 1px solid #4a4f56;
-}
-
-/* The main flex row inside each field: label/symbol on the left, the
-   input box or computed result on the right.
-
-   `min-height: 124px` is important: it reserves enough vertical space
-   for the extra "alternate units" line and formula text that appear
-   once a field is solved, so the row doesn't grow/shrink and shove
-   everything below it around when that happens.
-
-   `align-items: flex-start` keeps the input box pinned to the TOP of
-   the row (instead of vertically centered), so it stays in the exact
-   same spot whether or not that extra text is showing underneath it. */
+/* ---- Field rows (Acceleration / Time / Velocity / Distance) ---- */
+.ck-fields { border-top: 1px solid #5a606a; }
+.ck-field-row { border-bottom: 1px solid #4a4f56; }
 .ck-field-content {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  padding: 16px 2px;
-  gap: 24px;
-  min-height: 124px;
-  box-sizing: border-box;
+  display: flex; align-items: flex-start; justify-content: space-between;
+  padding: 16px 2px; gap: 24px; min-height: 124px; box-sizing: border-box;
 }
-
-.ck-field-left {
-  display: flex;
-  align-items: baseline;
-  gap: 14px;
-  flex: 1; /* Take up all the leftover horizontal space not used by the input/result box. */
-  min-width: 0; /* Allows this flex item to shrink below its natural content width if needed. */
-}
-
-/* The italic math symbol (a, t, v, d) shown to the left of each row. */
-.ck-field-symbol {
-  font-family: Georgia, serif;
-  font-style: italic;
-  font-size: 18px;
-  color: #7b818a;
-  min-width: 22px; /* Keeps symbols aligned even though "a"/"t"/"v"/"d" have slightly different widths. */
-}
-
-.ck-field-heading {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  flex-wrap: wrap; /* Lets the "More information" pill drop to its own line on narrow space instead of overflowing. */
-}
-
-.ck-field-label {
-  font-size: 18px;
-  font-weight: 600;
-  letter-spacing: .04em;
-}
-
-/* The pill-shaped "More information" / "Hide information" button. */
+.ck-field-left { display: flex; align-items: baseline; gap: 14px; flex: 1; min-width: 0; }
+.ck-field-symbol { font-family: Georgia, serif; font-style: italic; font-size: 18px; color: #7b818a; min-width: 22px; }
+.ck-field-heading { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.ck-field-label { font-size: 18px; font-weight: 600; letter-spacing: .04em; }
 .ck-details-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-family: inherit;
-  font-size: 18px;
-  border: 1px solid #5a606a;
-  background: transparent;
-  color: #a2a7ad;
-  padding: 3px 12px;
-  border-radius: 999px; /* A very large radius turns the rectangle into a pill/capsule shape. */
-  cursor: pointer;
-  white-space: nowrap;
+  display: inline-flex; align-items: center; gap: 6px; font-family: inherit; font-size: 18px;
+  border: 1px solid #5a606a; background: transparent; color: #a2a7ad;
+  padding: 3px 12px; border-radius: 999px; cursor: pointer; white-space: nowrap;
 }
+.ck-details-btn:hover { border-color: oklch(0.72 0.15 255); color: oklch(0.82 0.12 255); }
+.ck-field-unit { font-size: 18px; color: #8e949c; }
 
-.ck-details-btn:hover {
-  border-color: oklch(0.72 0.15 255); /* Blue accent color on hover. */
-  color: oklch(0.82 0.12 255);
-}
-
-.ck-field-unit {
-  font-size: 18px;
-  color: #8e949c;
-}
-
-/* ---- Input box variant (shown while a field is still editable) -------- */
-
-.ck-input-wrap {
-  width: 360px; /* Fixed width so the layout doesn't shift when swapping between the input box and the (differently-sized) result box. */
-}
-
+/* ---- Input variant ---- */
+.ck-input-wrap { width: 360px; max-width: 100%; }
 .ck-input {
-  width: 100%;
-  text-align: right; /* Numbers read more naturally right-aligned, like a calculator/spreadsheet. */
-  box-sizing: border-box;
-  border: 2px solid #d7dade;
-  border-radius: 6px;
-  padding: 8px 12px;
-  font-size: 24px;
-  font-family: inherit;
-  background: #2d3035;
-  color: #f2f3f4;
-  outline: none; /* Removes the browser's default focus ring; we draw our own with :focus below. */
+  width: 100%; text-align: right; box-sizing: border-box;
+  border: 2px solid #d7dade; border-radius: 6px; padding: 8px 12px;
+  font-size: 24px; font-family: inherit; background: #2d3035; color: #f2f3f4; outline: none;
 }
+.ck-input:focus { border-color: oklch(0.72 0.15 255); }
+.ck-input::placeholder { color: #7a8088; }
+.ck-companion { font-size: 18px; color: #7e848c; margin-top: 6px; text-align: right; overflow-wrap: anywhere; }
 
-.ck-input:focus {
-  border-color: oklch(0.72 0.15 255); /* Blue border shows which box currently has the text cursor. */
-}
-
-.ck-input::placeholder {
-  color: #7a8088; /* Dims the "0" placeholder text so it's clearly not a real typed value. */
-}
-
-/* Small grey "alternate units" line shown under a value, e.g. "0.9993 g"
-   under an acceleration input. Reused by both the input and result
-   variants below. */
-.ck-companion {
-  font-size: 18px;
-  color: #7e848c;
-  margin-top: 6px;
-  text-align: right;
-  overflow-wrap: anywhere; /* Lets very long numbers wrap onto a new line instead of overflowing the box. */
-}
-
-/* ---- Result variant (shown once a field has been solved for) ---------- */
-
-.ck-result-wrap {
-  width: 380px; /* Slightly wider than the input box to leave room for the "COMPUTED" badge. */
-}
-
-.ck-result-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  justify-content: flex-end;
-}
-
-.ck-result-value {
-  font-size: 24px;
-  font-weight: 600;
-  color: oklch(0.82 0.12 255); /* Blue accent — makes it visually clear this number was computed, not typed. */
-  overflow-wrap: anywhere;
-  text-align: right;
-}
-
-/* The small blue "COMPUTED" pill next to a result value. */
+/* ---- Result variant ---- */
+.ck-result-wrap { width: 380px; max-width: 100%; }
+.ck-result-row { display: flex; align-items: center; gap: 10px; justify-content: flex-end; }
+.ck-result-value { font-size: 24px; font-weight: 600; color: oklch(0.82 0.12 255); overflow-wrap: anywhere; text-align: right; }
 .ck-badge {
-  flex-shrink: 0; /* Never let the badge get squeezed/shrunk even if the value next to it is very long. */
-  font-size: 18px;
-  letter-spacing: .04em;
-  text-transform: uppercase;
-  font-weight: 700;
-  color: #1c1f24;
-  background: oklch(0.72 0.14 255);
-  padding: 0 9px;
-  border-radius: 4px;
-  white-space: nowrap;
+  flex-shrink: 0; font-size: 18px; letter-spacing: .04em; text-transform: uppercase; font-weight: 700;
+  color: #1c1f24; background: oklch(0.72 0.14 255); padding: 0 9px; border-radius: 4px; white-space: nowrap;
+}
+.ck-formula { font-family: Georgia, serif; font-size: 18px; color: #aab0b7; margin-top: 10px; text-align: right; overflow-wrap: anywhere; line-height: 1.5; }
+
+/* ---- "More information" panel ---- */
+.ck-details-panel { padding: 2px 2px 20px 36px; font-size: 18px; line-height: 1.6; color: #c2c7cd; max-width: 760px; }
+
+/* ---- Shared box style (three bottom sections) ---- */
+.ck-box { padding: 20px; border: 1px solid #4a4f56; border-radius: 8px; background: #2f3338; }
+.ck-box--quantities { margin-top: 18px; }
+.ck-box--newtonian { margin-top: 22px; }
+.ck-box-title { font-size: 18px; letter-spacing: .12em; text-transform: uppercase; color: #9097a0; margin: 0 0 16px; }
+.ck-box--newtonian .ck-box-title { margin-bottom: 10px; }
+.ck-relations .ck-box-title { margin-bottom: 12px; }
+
+/* ---- Useful Relativity Quantities ---- */
+.ck-quantities-row { display: flex; gap: 40px; }
+.ck-quantity-label { font-size: 18px; letter-spacing: .1em; text-transform: uppercase; color: #9097a0; margin-bottom: 4px; }
+.ck-quantity-value { font-size: 18px; font-weight: 600; font-variant-numeric: tabular-nums; color: #eef0f1; }
+.ck-quantity-formula { font-family: Georgia, serif; font-size: 18px; color: #aab0b7; margin-top: 8px; line-height: 1.5; }
+
+/* ---- Relativistic vs. Newtonian table ---- */
+.ck-compare-header { display: flex; justify-content: space-between; font-size: 18px; color: #8b9199; padding-bottom: 6px; border-bottom: 1px solid #4a4f56; gap: 12px; }
+.ck-compare-col-quantity { min-width: 150px; }
+.ck-compare-col-rel, .ck-compare-col-newt { flex: 1; text-align: right; }
+.ck-compare-col-diff { min-width: 120px; text-align: right; }
+.ck-compare-row { display: flex; align-items: baseline; justify-content: space-between; padding: 12px 0; border-bottom: 1px dotted #4a4f56; gap: 12px; }
+.ck-compare-quantity { font-size: 18px; min-width: 150px; }
+.ck-compare-symbol { font-family: Georgia, serif; font-style: italic; color: #7b818a; }
+.ck-compare-rel { font-size: 18px; color: oklch(0.82 0.12 255); text-align: right; flex: 1; overflow-wrap: anywhere; }
+.ck-compare-unit { color: #8b9199; }
+.ck-compare-newt { font-size: 18px; color: #b6bbc1; text-align: right; flex: 1; overflow-wrap: anywhere; }
+.ck-compare-pct { font-size: 18px; color: #cfd3d8; min-width: 120px; text-align: right; }
+
+/* ---- Reset button ---- */
+.ck-actions { margin-top: 22px; display: flex; gap: 14px; align-items: center; }
+.ck-reset-btn { font-family: inherit; font-size: 18px; border: 1px solid #d7dade; background: transparent; color: #e8eaed; padding: 8px 18px; border-radius: 6px; cursor: pointer; }
+.ck-reset-btn:hover { background: #d7dade; color: #1c1f24; }
+
+/* ---- Relativistic relations ---- */
+.ck-relations { margin-top: 14px; color: #cdd1d6; }
+.ck-relations-formula { font-family: Georgia, serif; font-size: 18px; color: #aab0b7; line-height: 1.9; }
+.ck-relations-note { font-size: 18px; color: #8b9199; margin-top: 12px; line-height: 1.6; }
+
+/* =======================================================================
+   RESPONSIVE — tablets & large phones (≤640px): stack side-by-side layouts
+   ======================================================================= */
+@media (max-width: 640px) {
+  .page { padding: 20px 12px; }
+  .ck-card { padding: 28px 22px; border-radius: 8px; }
+
+  /* Stack each field: label block on top, full-width input/result below. */
+  .ck-field-content { flex-direction: column; align-items: stretch; gap: 12px; min-height: 0; }
+  .ck-input-wrap, .ck-result-wrap { width: 100%; }
+  .ck-input, .ck-companion, .ck-formula { text-align: left; }
+  .ck-result-row { justify-content: flex-start; }
+  .ck-result-value { text-align: left; }
+  .ck-details-panel { padding-left: 8px; }
+
+  /* Stack the Lorentz factor / rapidity pair. */
+  .ck-quantities-row { flex-direction: column; gap: 16px; }
+
+  /* Convert the 4-column comparison table into labeled, stacked lines. */
+  .ck-compare-header { display: none; }
+  .ck-compare-row { flex-direction: column; align-items: stretch; gap: 4px; }
+  .ck-compare-quantity, .ck-compare-rel, .ck-compare-newt, .ck-compare-pct { min-width: 0; flex: none; text-align: left; }
+  .ck-compare-quantity { font-weight: 600; margin-bottom: 2px; }
+  .ck-compare-rel::before  { content: "Relativistic: "; color: #8b9199; }
+  .ck-compare-newt::before { content: "Newtonian: ";    color: #8b9199; }
+  .ck-compare-pct::before  { content: "Difference: ";   color: #8b9199; }
 }
 
-/* The little formula shown under a computed result, e.g. "v = a·t / √(...)". */
-.ck-formula {
-  font-family: Georgia, serif;
-  font-size: 18px;
-  color: #aab0b7;
-  margin-top: 10px;
-  text-align: right;
-  overflow-wrap: anywhere;
-  line-height: 1.5;
-}
-
-/* ---- "More information" expandable text panel -------------------------- */
-
-.ck-details-panel {
-  padding: 2px 2px 20px 36px; /* Extra left padding lines the text up under the label rather than the symbol. */
-  font-size: 18px;
-  line-height: 1.6;
-  color: #c2c7cd;
-  max-width: 760px;
-}
-
-/* ---- Shared box style used by all three bottom sections ----------------
-   ("Useful Relativity Quantities", "Relativistic vs. Newtonian", and
-   "Relativistic relations" all share this same dark box/border/radius
-   so they look like a consistent family of sections — only their
-   top margin and title spacing differ slightly, handled below.) */
-
-.ck-box {
-  padding: 20px;
-  border: 1px solid #4a4f56;
-  border-radius: 8px;
-  background: #2f3338;
-}
-
-.ck-box--quantities {
-  margin-top: 18px;
-}
-
-.ck-box--newtonian {
-  margin-top: 22px;
-}
-
-/* Shared uppercase section-title style (all three boxes use this). */
-.ck-box-title {
-  font-size: 18px;
-  letter-spacing: .12em;
-  text-transform: uppercase;
-  color: #9097a0;
-  margin: 0 0 16px;
-}
-
-/* These two overrides just tweak the gap below the title for two of the
-   three boxes — everything else about the title stays identical. */
-.ck-box--newtonian .ck-box-title {
-  margin-bottom: 10px;
-}
-
-.ck-relations .ck-box-title {
-  margin-bottom: 12px;
-}
-
-/* ---- "Useful Relativity Quantities" box contents ----------------------- */
-
-.ck-quantities-row {
-  display: flex;
-  gap: 40px; /* Side-by-side Lorentz factor / Rapidity columns. */
-}
-
-.ck-quantity-label {
-  font-size: 18px;
-  letter-spacing: .1em;
-  text-transform: uppercase;
-  color: #9097a0;
-  margin-bottom: 4px;
-}
-
-.ck-quantity-value {
-  font-size: 18px;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums; /* Makes digits a fixed width so numbers don't jitter horizontally as they change. */
-  color: #eef0f1;
-}
-
-.ck-quantity-formula {
-  font-family: Georgia, serif;
-  font-size: 18px;
-  color: #aab0b7;
-  margin-top: 8px;
-  line-height: 1.5;
-}
-
-/* ---- "Relativistic vs. Newtonian" table --------------------------------- */
-
-.ck-compare-header {
-  display: flex;
-  justify-content: space-between;
-  font-size: 18px;
-  color: #8b9199;
-  padding-bottom: 6px;
-  border-bottom: 1px solid #4a4f56;
-  gap: 12px;
-}
-
-.ck-compare-col-quantity {
-  min-width: 150px;
-}
-
-.ck-compare-col-rel,
-.ck-compare-col-newt {
-  flex: 1;
-  text-align: right;
-}
-
-.ck-compare-col-diff {
-  min-width: 120px;
-  text-align: right;
-}
-
-/* One data row of the table (there are always exactly 2, built by
-   comparisonRowHTML() in script.js). */
-.ck-compare-row {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  padding: 12px 0;
-  border-bottom: 1px dotted #4a4f56;
-  gap: 12px;
-}
-
-.ck-compare-quantity {
-  font-size: 18px;
-  min-width: 150px; /* Matches .ck-compare-col-quantity above so the column stays aligned. */
-}
-
-.ck-compare-symbol {
-  font-family: Georgia, serif;
-  font-style: italic;
-  color: #7b818a;
-}
-
-.ck-compare-rel {
-  font-size: 18px;
-  color: oklch(0.82 0.12 255); /* Same blue accent used for computed values elsewhere. */
-  text-align: right;
-  flex: 1;
-  overflow-wrap: anywhere;
-}
-
-.ck-compare-unit {
-  color: #8b9199;
-}
-
-.ck-compare-newt {
-  font-size: 18px;
-  color: #b6bbc1;
-  text-align: right;
-  flex: 1;
-  overflow-wrap: anywhere;
-}
-
-.ck-compare-pct {
-  font-size: 18px;
-  color: #cfd3d8;
-  min-width: 120px;
-  text-align: right;
-}
-
-/* ---- Reset button row --------------------------------------------------- */
-
-.ck-actions {
-  margin-top: 22px;
-  display: flex;
-  gap: 14px;
-  align-items: center;
-}
-
-.ck-reset-btn {
-  font-family: inherit;
-  font-size: 18px;
-  border: 1px solid #d7dade;
-  background: transparent;
-  color: #e8eaed;
-  padding: 8px 18px;
-  border-radius: 6px;
-  cursor: pointer;
-}
-
-.ck-reset-btn:hover {
-  background: #d7dade; /* Inverts to a light "filled" button on hover. */
-  color: #1c1f24;
-}
-
-/* ---- "Relativistic relations" box (fixed reference formulas) ----------- */
-
-.ck-relations {
-  margin-top: 14px;
-  color: #cdd1d6;
-}
-
-.ck-relations-formula {
-  font-family: Georgia, serif;
-  font-size: 18px;
-  color: #aab0b7;
-  line-height: 1.9;
-}
-
-.ck-relations-note {
-  font-size: 18px;
-  color: #8b9199;
-  margin-top: 12px;
-  line-height: 1.6;
+/* =======================================================================
+   RESPONSIVE — phones (≤480px): tame oversized type & spacing
+   ======================================================================= */
+@media (max-width: 480px) {
+  .ck-card { padding: 22px 16px; }
+  .ck-title { font-size: 20px; }
+  .ck-subtitle { font-size: 16px; }
+  .ck-input { font-size: 18px; }        /* keep ≥16px so iOS doesn't auto-zoom on focus */
+  .ck-result-value { font-size: 20px; }
+  .ck-badge { font-size: 15px; }
+  .ck-box-title { letter-spacing: .06em; }  /* tighten so uppercase titles don't overflow */
 }
 </style>
 </head>
 <body>
 
-<!--
-  This file only holds the parts of the calculator that never change:
-  the title, the scenario paragraph, section headings, and empty
-  "slots" (elements with an `id`) that script.js fills in and updates
-  as the user types. If you're looking for how the numbers get
-  calculated, or how the field rows are built, see script.js instead —
-  this file is just the unchanging skeleton around them.
--->
+<div class="page">
+  <main class="ck-card">
 
-<div class="page"> <!-- Full-page wrapper that centers the calculator card. -->
-  <main class="ck-card"> <!-- The dark card itself — see .ck-card in style.css. -->
-
-    <!-- Title + subtitle at the top of the card. -->
+    <!-- Header -->
     <header class="ck-header">
       <div>
         <h1 class="ck-title">Relativity Kinematics Calculator</h1>
@@ -512,64 +178,50 @@ body {
       </div>
     </header>
 
-    <!-- Fixed intro paragraph describing the scenario being modeled. -->
+    <!-- Scenario intro -->
     <p class="ck-scenario"><span class="ck-scenario-lead">Scenario:</span> A stationary observer in the lab watches a particle starting at rest get pushed by a constant continuous force along a straight line. Assume an idealized environment with no gravity. All measurements and calculations are from the perspective of the stationary lab observer. &ldquo;a&rdquo; is the particle&rsquo;s constant proper acceleration, which is also the initial acceleration measured by the lab observer at the instant of launch (a = a&#8320;).</p>
 
-    <!--
-      Status line (e.g. "Enter any two kinematics values to begin.",
-      "Solved — ...", or a red error message). Starts empty here —
-      script.js's render() function fills in the text and turns it red
-      when there's an error.
-    -->
+    <!-- Status line (filled by JS) -->
     <p id="status" class="ck-status"></p>
 
-    <!--
-      The four kinematics rows (Acceleration, Time, Velocity, Distance)
-      live entirely inside this empty div. script.js builds their HTML
-      from scratch every time something changes (see renderFields() in
-      script.js) and drops it in here.
-    -->
+    <!-- Four kinematics rows (built by JS) -->
     <div id="fields" class="ck-fields"></div>
 
-    <!-- "Useful Relativity Quantities" box: Lorentz factor (γ) and rapidity (φ). -->
+    <!-- Useful Relativity Quantities -->
     <section class="ck-box ck-box--quantities">
       <h2 class="ck-box-title">Useful Relativity Quantities</h2>
       <div class="ck-quantities-row">
         <div class="ck-quantity">
           <div class="ck-quantity-label">Lorentz factor &gamma;</div>
-          <!-- id="gamma-value" is a slot — script.js writes the computed number (or "—") into it. -->
           <div id="gamma-value" class="ck-quantity-value">&mdash;</div>
           <div class="ck-quantity-formula">&gamma; = 1 / &radic;(1 &minus; v&sup2;/c&sup2;)</div>
         </div>
         <div class="ck-quantity">
           <div class="ck-quantity-label">Rapidity &phi;</div>
-          <!-- id="rapidity-value" — same idea as gamma-value above. -->
           <div id="rapidity-value" class="ck-quantity-value">&mdash;</div>
           <div class="ck-quantity-formula">&phi; = artanh(v/c)</div>
         </div>
       </div>
     </section>
 
-    <!-- "Relativistic vs. Newtonian" comparison table. -->
+    <!-- Relativistic vs. Newtonian -->
     <section class="ck-box ck-box--newtonian">
       <h2 class="ck-box-title">Relativistic vs. Newtonian</h2>
-      <!-- Column headings are fixed; only the data rows below them change. -->
       <div class="ck-compare-header">
         <span class="ck-compare-col-quantity">Quantity</span>
         <span class="ck-compare-col-rel">Relativistic</span>
         <span class="ck-compare-col-newt">Newtonian</span>
         <span class="ck-compare-col-diff">Difference</span>
       </div>
-      <!-- id="comparison" is another empty slot — script.js fills it with up to 2 result rows. -->
       <div id="comparison"></div>
     </section>
 
-    <!-- Reset button — clears every field back to empty. Wired up in script.js. -->
+    <!-- Reset -->
     <div class="ck-actions">
       <button id="reset-btn" type="button" class="ck-reset-btn">Reset</button>
     </div>
 
-    <!-- "Relativistic relations" box: fixed reference formulas, never change. -->
+    <!-- Relativistic relations (fixed reference) -->
     <section class="ck-box ck-relations">
       <h2 class="ck-box-title">Relativistic relations</h2>
       <div class="ck-relations-formula">&gamma; = 1 / &radic;(1 &minus; v&sup2;/c&sup2;) &nbsp;&middot;&nbsp; c = 299,792,458 m/s</div>
@@ -579,7 +231,6 @@ body {
   </main>
 </div>
 
-<!-- Loaded last so the elements above already exist by the time this runs. -->
 <script>
 // =========================================================================
 // Relativity Kinematics Calculator — application logic
