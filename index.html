@@ -1,0 +1,1061 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Relativity Kinematics Calculator</title>
+<link rel="icon" href="data:,"> <!-- Empty icon so browsers don't request a favicon.ico we don't have. -->
+<style>
+/* =========================================================================
+   Relativity Kinematics Calculator — styles
+
+   This file is organized top-to-bottom in roughly the same order as the
+   page reads: page background, card shell, header, scenario text, status
+   line, the four field rows, the three bottom boxes, the reset button.
+
+   A few colors use `oklch(...)` instead of a hex code like `#4a4f56` —
+   that's just a newer, more precise way to specify a color in modern
+   CSS. You don't need to understand the math behind it; treat it the
+   same as any other color value.
+   ========================================================================= */
+
+/* Makes `width`/`height`/`padding`/`border` all count toward one element's
+   total size everywhere on the page, instead of padding/border adding
+   extra size on top of the width you set. Without this, a lot of the
+   pixel measurements below wouldn't line up correctly. */
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0; /* Browsers add a small default margin around <body> — remove it so our layout starts exactly at the edges. */
+}
+
+body {
+  background: #1c1e22; /* Dark backdrop that the calculator card floats on. */
+}
+
+/* Full-page wrapper: centers the card horizontally and adds breathing
+   room around it. `display: flex; justify-content: center` is a common
+   way to center a block of content. */
+.page {
+  display: flex;
+  justify-content: center;
+  padding: 48px 24px;
+}
+
+/* The calculator card itself — the dark slate rectangle everything else
+   lives inside. Fixed at 1040px wide on purpose (this design does not
+   reflow/resize based on content or viewport width). */
+.ck-card {
+  width: 1040px;
+  border: 1px solid #4a4f56;
+  border-radius: 10px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, .22); /* Soft drop shadow so the card lifts off the page background. */
+  padding: 44px 48px;
+  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; /* Base font for the whole card; specific bits (math symbols, formulas) switch to Georgia below. */
+  font-size: 18px;
+  color: #e8eaed;
+  background-color: #383c42;
+}
+
+/* ---- Header: title + subtitle at the top of the card ------------------ */
+
+.ck-header {
+  display: flex;
+  justify-content: space-between; /* Room for something to sit on the right in the future; currently just pushes the title block to the left. */
+  align-items: flex-end;
+  border-bottom: 2px solid #d7dade;
+  padding-bottom: 16px;
+  margin-bottom: 24px;
+}
+
+.ck-title {
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -.01em;
+  color: #f3f4f5;
+  margin: 0;
+}
+
+.ck-subtitle {
+  font-size: 18px;
+  color: #9aa0a6;
+  margin: 6px 0 0;
+}
+
+/* ---- Scenario paragraph ------------------------------------------------ */
+
+.ck-scenario {
+  font-size: 18px;
+  color: #c2c7cd;
+  line-height: 1.6;
+  margin: 0 0 24px;
+  max-width: 920px; /* Keeps the paragraph from stretching edge-to-edge, for readability. */
+}
+
+.ck-scenario-lead {
+  font-weight: 700; /* Bolds just the "Scenario:" lead-in word. */
+  color: #e8eaed;
+}
+
+/* ---- Status line (e.g. "Solved — ...", or a red error message) -------- */
+
+.ck-status {
+  margin: 0 0 14px;
+  font-size: 18px;
+  color: #9aa0a6; /* Default (non-error) grey color. */
+}
+
+/* Added on top of .ck-status by script.js when there's a validation
+   error — see `statusEl.classList.toggle('ck-status--error', ...)` in
+   script.js's render() function. */
+.ck-status--error {
+  color: oklch(0.74 0.16 25); /* A red/orange tone. */
+  font-weight: 500;
+}
+
+/* ---- The four kinematics rows (Acceleration / Time / Velocity / Distance) ---- */
+
+.ck-fields {
+  border-top: 1px solid #5a606a; /* Top border of the whole list; each row below supplies its own bottom border. */
+}
+
+.ck-field-row {
+  border-bottom: 1px solid #4a4f56;
+}
+
+/* The main flex row inside each field: label/symbol on the left, the
+   input box or computed result on the right.
+
+   `min-height: 124px` is important: it reserves enough vertical space
+   for the extra "alternate units" line and formula text that appear
+   once a field is solved, so the row doesn't grow/shrink and shove
+   everything below it around when that happens.
+
+   `align-items: flex-start` keeps the input box pinned to the TOP of
+   the row (instead of vertically centered), so it stays in the exact
+   same spot whether or not that extra text is showing underneath it. */
+.ck-field-content {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 16px 2px;
+  gap: 24px;
+  min-height: 124px;
+  box-sizing: border-box;
+}
+
+.ck-field-left {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  flex: 1; /* Take up all the leftover horizontal space not used by the input/result box. */
+  min-width: 0; /* Allows this flex item to shrink below its natural content width if needed. */
+}
+
+/* The italic math symbol (a, t, v, d) shown to the left of each row. */
+.ck-field-symbol {
+  font-family: Georgia, serif;
+  font-style: italic;
+  font-size: 18px;
+  color: #7b818a;
+  min-width: 22px; /* Keeps symbols aligned even though "a"/"t"/"v"/"d" have slightly different widths. */
+}
+
+.ck-field-heading {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap; /* Lets the "More information" pill drop to its own line on narrow space instead of overflowing. */
+}
+
+.ck-field-label {
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: .04em;
+}
+
+/* The pill-shaped "More information" / "Hide information" button. */
+.ck-details-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: inherit;
+  font-size: 18px;
+  border: 1px solid #5a606a;
+  background: transparent;
+  color: #a2a7ad;
+  padding: 3px 12px;
+  border-radius: 999px; /* A very large radius turns the rectangle into a pill/capsule shape. */
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.ck-details-btn:hover {
+  border-color: oklch(0.72 0.15 255); /* Blue accent color on hover. */
+  color: oklch(0.82 0.12 255);
+}
+
+.ck-field-unit {
+  font-size: 18px;
+  color: #8e949c;
+}
+
+/* ---- Input box variant (shown while a field is still editable) -------- */
+
+.ck-input-wrap {
+  width: 360px; /* Fixed width so the layout doesn't shift when swapping between the input box and the (differently-sized) result box. */
+}
+
+.ck-input {
+  width: 100%;
+  text-align: right; /* Numbers read more naturally right-aligned, like a calculator/spreadsheet. */
+  box-sizing: border-box;
+  border: 2px solid #d7dade;
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 24px;
+  font-family: inherit;
+  background: #2d3035;
+  color: #f2f3f4;
+  outline: none; /* Removes the browser's default focus ring; we draw our own with :focus below. */
+}
+
+.ck-input:focus {
+  border-color: oklch(0.72 0.15 255); /* Blue border shows which box currently has the text cursor. */
+}
+
+.ck-input::placeholder {
+  color: #7a8088; /* Dims the "0" placeholder text so it's clearly not a real typed value. */
+}
+
+/* Small grey "alternate units" line shown under a value, e.g. "0.9993 g"
+   under an acceleration input. Reused by both the input and result
+   variants below. */
+.ck-companion {
+  font-size: 18px;
+  color: #7e848c;
+  margin-top: 6px;
+  text-align: right;
+  overflow-wrap: anywhere; /* Lets very long numbers wrap onto a new line instead of overflowing the box. */
+}
+
+/* ---- Result variant (shown once a field has been solved for) ---------- */
+
+.ck-result-wrap {
+  width: 380px; /* Slightly wider than the input box to leave room for the "COMPUTED" badge. */
+}
+
+.ck-result-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.ck-result-value {
+  font-size: 24px;
+  font-weight: 600;
+  color: oklch(0.82 0.12 255); /* Blue accent — makes it visually clear this number was computed, not typed. */
+  overflow-wrap: anywhere;
+  text-align: right;
+}
+
+/* The small blue "COMPUTED" pill next to a result value. */
+.ck-badge {
+  flex-shrink: 0; /* Never let the badge get squeezed/shrunk even if the value next to it is very long. */
+  font-size: 18px;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: #1c1f24;
+  background: oklch(0.72 0.14 255);
+  padding: 0 9px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+/* The little formula shown under a computed result, e.g. "v = a·t / √(...)". */
+.ck-formula {
+  font-family: Georgia, serif;
+  font-size: 18px;
+  color: #aab0b7;
+  margin-top: 10px;
+  text-align: right;
+  overflow-wrap: anywhere;
+  line-height: 1.5;
+}
+
+/* ---- "More information" expandable text panel -------------------------- */
+
+.ck-details-panel {
+  padding: 2px 2px 20px 36px; /* Extra left padding lines the text up under the label rather than the symbol. */
+  font-size: 18px;
+  line-height: 1.6;
+  color: #c2c7cd;
+  max-width: 760px;
+}
+
+/* ---- Shared box style used by all three bottom sections ----------------
+   ("Useful Relativity Quantities", "Relativistic vs. Newtonian", and
+   "Relativistic relations" all share this same dark box/border/radius
+   so they look like a consistent family of sections — only their
+   top margin and title spacing differ slightly, handled below.) */
+
+.ck-box {
+  padding: 20px;
+  border: 1px solid #4a4f56;
+  border-radius: 8px;
+  background: #2f3338;
+}
+
+.ck-box--quantities {
+  margin-top: 18px;
+}
+
+.ck-box--newtonian {
+  margin-top: 22px;
+}
+
+/* Shared uppercase section-title style (all three boxes use this). */
+.ck-box-title {
+  font-size: 18px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: #9097a0;
+  margin: 0 0 16px;
+}
+
+/* These two overrides just tweak the gap below the title for two of the
+   three boxes — everything else about the title stays identical. */
+.ck-box--newtonian .ck-box-title {
+  margin-bottom: 10px;
+}
+
+.ck-relations .ck-box-title {
+  margin-bottom: 12px;
+}
+
+/* ---- "Useful Relativity Quantities" box contents ----------------------- */
+
+.ck-quantities-row {
+  display: flex;
+  gap: 40px; /* Side-by-side Lorentz factor / Rapidity columns. */
+}
+
+.ck-quantity-label {
+  font-size: 18px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: #9097a0;
+  margin-bottom: 4px;
+}
+
+.ck-quantity-value {
+  font-size: 18px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums; /* Makes digits a fixed width so numbers don't jitter horizontally as they change. */
+  color: #eef0f1;
+}
+
+.ck-quantity-formula {
+  font-family: Georgia, serif;
+  font-size: 18px;
+  color: #aab0b7;
+  margin-top: 8px;
+  line-height: 1.5;
+}
+
+/* ---- "Relativistic vs. Newtonian" table --------------------------------- */
+
+.ck-compare-header {
+  display: flex;
+  justify-content: space-between;
+  font-size: 18px;
+  color: #8b9199;
+  padding-bottom: 6px;
+  border-bottom: 1px solid #4a4f56;
+  gap: 12px;
+}
+
+.ck-compare-col-quantity {
+  min-width: 150px;
+}
+
+.ck-compare-col-rel,
+.ck-compare-col-newt {
+  flex: 1;
+  text-align: right;
+}
+
+.ck-compare-col-diff {
+  min-width: 120px;
+  text-align: right;
+}
+
+/* One data row of the table (there are always exactly 2, built by
+   comparisonRowHTML() in script.js). */
+.ck-compare-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 12px 0;
+  border-bottom: 1px dotted #4a4f56;
+  gap: 12px;
+}
+
+.ck-compare-quantity {
+  font-size: 18px;
+  min-width: 150px; /* Matches .ck-compare-col-quantity above so the column stays aligned. */
+}
+
+.ck-compare-symbol {
+  font-family: Georgia, serif;
+  font-style: italic;
+  color: #7b818a;
+}
+
+.ck-compare-rel {
+  font-size: 18px;
+  color: oklch(0.82 0.12 255); /* Same blue accent used for computed values elsewhere. */
+  text-align: right;
+  flex: 1;
+  overflow-wrap: anywhere;
+}
+
+.ck-compare-unit {
+  color: #8b9199;
+}
+
+.ck-compare-newt {
+  font-size: 18px;
+  color: #b6bbc1;
+  text-align: right;
+  flex: 1;
+  overflow-wrap: anywhere;
+}
+
+.ck-compare-pct {
+  font-size: 18px;
+  color: #cfd3d8;
+  min-width: 120px;
+  text-align: right;
+}
+
+/* ---- Reset button row --------------------------------------------------- */
+
+.ck-actions {
+  margin-top: 22px;
+  display: flex;
+  gap: 14px;
+  align-items: center;
+}
+
+.ck-reset-btn {
+  font-family: inherit;
+  font-size: 18px;
+  border: 1px solid #d7dade;
+  background: transparent;
+  color: #e8eaed;
+  padding: 8px 18px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.ck-reset-btn:hover {
+  background: #d7dade; /* Inverts to a light "filled" button on hover. */
+  color: #1c1f24;
+}
+
+/* ---- "Relativistic relations" box (fixed reference formulas) ----------- */
+
+.ck-relations {
+  margin-top: 14px;
+  color: #cdd1d6;
+}
+
+.ck-relations-formula {
+  font-family: Georgia, serif;
+  font-size: 18px;
+  color: #aab0b7;
+  line-height: 1.9;
+}
+
+.ck-relations-note {
+  font-size: 18px;
+  color: #8b9199;
+  margin-top: 12px;
+  line-height: 1.6;
+}
+</style>
+</head>
+<body>
+
+<!--
+  This file only holds the parts of the calculator that never change:
+  the title, the scenario paragraph, section headings, and empty
+  "slots" (elements with an `id`) that script.js fills in and updates
+  as the user types. If you're looking for how the numbers get
+  calculated, or how the field rows are built, see script.js instead —
+  this file is just the unchanging skeleton around them.
+-->
+
+<div class="page"> <!-- Full-page wrapper that centers the calculator card. -->
+  <main class="ck-card"> <!-- The dark card itself — see .ck-card in style.css. -->
+
+    <!-- Title + subtitle at the top of the card. -->
+    <header class="ck-header">
+      <div>
+        <h1 class="ck-title">Relativity Kinematics Calculator</h1>
+        <p class="ck-subtitle">Non-accelerating lab reference frame</p>
+      </div>
+    </header>
+
+    <!-- Fixed intro paragraph describing the scenario being modeled. -->
+    <p class="ck-scenario"><span class="ck-scenario-lead">Scenario:</span> A stationary observer in the lab watches a particle starting at rest get pushed by a constant continuous force along a straight line. Assume an idealized environment with no gravity. All measurements and calculations are from the perspective of the stationary lab observer. &ldquo;a&rdquo; is the particle&rsquo;s constant proper acceleration, which is also the initial acceleration measured by the lab observer at the instant of launch (a = a&#8320;).</p>
+
+    <!--
+      Status line (e.g. "Enter any two kinematics values to begin.",
+      "Solved — ...", or a red error message). Starts empty here —
+      script.js's render() function fills in the text and turns it red
+      when there's an error.
+    -->
+    <p id="status" class="ck-status"></p>
+
+    <!--
+      The four kinematics rows (Acceleration, Time, Velocity, Distance)
+      live entirely inside this empty div. script.js builds their HTML
+      from scratch every time something changes (see renderFields() in
+      script.js) and drops it in here.
+    -->
+    <div id="fields" class="ck-fields"></div>
+
+    <!-- "Useful Relativity Quantities" box: Lorentz factor (γ) and rapidity (φ). -->
+    <section class="ck-box ck-box--quantities">
+      <h2 class="ck-box-title">Useful Relativity Quantities</h2>
+      <div class="ck-quantities-row">
+        <div class="ck-quantity">
+          <div class="ck-quantity-label">Lorentz factor &gamma;</div>
+          <!-- id="gamma-value" is a slot — script.js writes the computed number (or "—") into it. -->
+          <div id="gamma-value" class="ck-quantity-value">&mdash;</div>
+          <div class="ck-quantity-formula">&gamma; = 1 / &radic;(1 &minus; v&sup2;/c&sup2;)</div>
+        </div>
+        <div class="ck-quantity">
+          <div class="ck-quantity-label">Rapidity &phi;</div>
+          <!-- id="rapidity-value" — same idea as gamma-value above. -->
+          <div id="rapidity-value" class="ck-quantity-value">&mdash;</div>
+          <div class="ck-quantity-formula">&phi; = artanh(v/c)</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- "Relativistic vs. Newtonian" comparison table. -->
+    <section class="ck-box ck-box--newtonian">
+      <h2 class="ck-box-title">Relativistic vs. Newtonian</h2>
+      <!-- Column headings are fixed; only the data rows below them change. -->
+      <div class="ck-compare-header">
+        <span class="ck-compare-col-quantity">Quantity</span>
+        <span class="ck-compare-col-rel">Relativistic</span>
+        <span class="ck-compare-col-newt">Newtonian</span>
+        <span class="ck-compare-col-diff">Difference</span>
+      </div>
+      <!-- id="comparison" is another empty slot — script.js fills it with up to 2 result rows. -->
+      <div id="comparison"></div>
+    </section>
+
+    <!-- Reset button — clears every field back to empty. Wired up in script.js. -->
+    <div class="ck-actions">
+      <button id="reset-btn" type="button" class="ck-reset-btn">Reset</button>
+    </div>
+
+    <!-- "Relativistic relations" box: fixed reference formulas, never change. -->
+    <section class="ck-box ck-relations">
+      <h2 class="ck-box-title">Relativistic relations</h2>
+      <div class="ck-relations-formula">&gamma; = 1 / &radic;(1 &minus; v&sup2;/c&sup2;) &nbsp;&middot;&nbsp; c = 299,792,458 m/s</div>
+      <div class="ck-relations-note">a is the initial proper acceleration a&#8320; = F/m. t is lab-frame (wristwatch) time. Newtonian column uses classical from-rest SUVAT.</div>
+    </section>
+
+  </main>
+</div>
+
+<!-- Loaded last so the elements above already exist by the time this runs. -->
+<script>
+// =========================================================================
+// Relativity Kinematics Calculator — application logic
+//
+// This file has three jobs:
+//   1. PHYSICS  — the actual relativity/Newtonian math (constants + formulas)
+//   2. STATE    — remembering what the user has typed so far
+//   3. RENDERING — turning that state into the HTML you see on screen
+//
+// Everything is wrapped in `(function () { ... })()` — this is called an
+// "IIFE" (Immediately Invoked Function Expression). Its only job is to keep
+// all the variables/functions below private to this file, so they don't
+// leak into the browser's global scope and collide with other scripts.
+// =========================================================================
+(function () {
+  'use strict'; // Makes JavaScript stricter about common mistakes (e.g. typos that would silently create new global variables).
+
+  // ---- Physics constants --------------------------------------------
+  // These never change while the app runs, so they're declared once at
+  // the top with `const` (a variable that can't be reassigned).
+
+  const C = 299792458;        // Speed of light, in meters per second.
+  const G = 9.80665;          // Standard gravity ("1 g"), in meters per second squared — used to show acceleration as a multiple of g.
+  const S_HOUR = 3600;        // Seconds in an hour.
+  const S_DAY = 86400;        // Seconds in a day.
+  const S_YEAR = 31557600;    // Seconds in a (Julian) year.
+  const MI_PER_M = 0.000621371;      // Miles per meter — used to convert velocity to mph.
+  const M_PER_AU = 149597870700;     // Meters per Astronomical Unit (Earth-Sun distance).
+  const M_PER_LY = 9460730472580800; // Meters per light-year.
+
+  // META describes the four quantities the calculator works with: a
+  // human-readable label, the math symbol shown in italics, and the SI
+  // unit. Keyed by the same short code used everywhere else in this file
+  // ('a', 't', 'v', 'd') so we can look up "what do I call this field?"
+  // in one place instead of repeating it everywhere.
+  const META = {
+    a: { label: 'Acceleration', symbol: 'a', unit: 'm/s²' },
+    t: { label: 'Time', symbol: 't', unit: 's' },
+    v: { label: 'Velocity', symbol: 'v', unit: 'm/s' },
+    d: { label: 'Distance', symbol: 'd', unit: 'm' },
+  };
+
+  // EQ_BY_VAR holds the little formula strings shown under a computed
+  // result (e.g. "v = a·t / √(1 + (a·t/c)²)"). It's a lookup table keyed
+  // by "which two values did the user type in" (e.g. 'a,t') and then by
+  // "which value are we showing the formula for" (e.g. v or d — the two
+  // values that get computed). These strings are for DISPLAY ONLY; the
+  // actual math is done separately below in relSolve().
+  const EQ_BY_VAR = {
+    'a,t': { v: 'v = a·t / √(1 + (a·t/c)²)', d: 'd = (c²/a)·(√(1 + (a·t/c)²) − 1)' },
+    'a,d': { v: 'v = c·√(1 − 1/γ²),  where γ = 1 + a·d/c²', t: 't = √(2d/a + d²/c²)' },
+    'a,v': { d: 'd = (c²/a)·(γ − 1)', t: 't = γ·v / a' },
+    't,v': { a: 'a = γ·v / t', d: 'd = (c²·t/v)·(1 − 1/γ)' },
+    't,d': { a: 'a = 2d / (t² − d²/c²)', v: 'v = 2c²·d·t / (c²·t² + d²)' },
+    'v,d': { a: 'a = (c²/d)·(γ − 1)', t: 't = (d/c)·√((γ+1)/(γ−1))' },
+  };
+
+  // DETAILS holds the long explanatory paragraphs shown when a student
+  // clicks "More information" next to a field. Also just display text —
+  // no calculations happen here.
+  const DETAILS = {
+    a: 'Our lab accelerates the target particle with a constant continuous force (F), thus the initial acceleration (a₀) is driven by F/m (recall F=ma, which means a=F/m). Due to relativity, as velocity (v) reaches a sizeable fraction of c, a growing portion of our constant force (F) will go towards making mass (m) bigger rather than making velocity (v) bigger. Consequently, the target particle’s acceleration (a) as we measure it in the lab will start at (a₀) at time t=0, and then decrease over time as mass (m) increases in proportion. To maintain clarity and consistency, the acceleration (a) quantity used in this kinematics calculator is the initial acceleration (a₀). Because a₀=F/m, and (F) is constant, all the maths stay correct.',
+    t: 'The quantity time t is just the regular time you see on your wristwatch as a stationary observer in our non-accelerating lab reference frame. And yet, time (t) in the relativistic results (tʀᴇʟ) will be a bigger number than the time (t) predicted by the Newtonian results (tɴᴇᴡᴛ). This difference occurs because acceleration (a) and velocity (v) require relativistic adjustments, and relativistic (a) and (v) are needed to correctly calculate time (t). Interestingly, even though time (t) behaves normally on your wristwatch, the particle will appear to you to act slower the more closely its velocity approaches c. If the particle is radioactive and emits a decay signal at regular intervals, you will notice the intervals getting longer as the particle’s velocity (v) approaches c. If eventually (v) ~ (c), the particle will stop emitting decay signals entirely from your perspective. In summary, accurately calculating the time (t) you actually observe on your wristwatch requires taking into account relativistic effects on (a) and (v). The Newtonian prediction of time (tɴᴇᴡᴛ) will be a smaller number than the actual time (tʀᴇʟ) you experience, and both (tʀᴇʟ) and (tɴᴇᴡᴛ) will be bigger than the time the particle experiences (tₚₐᵣₜ).',
+    v: 'You as the stationary lab observer will see velocity (v) increase linearly with time (t) for awhile, but as (v) becomes a sizeable fraction of c special relativity takes over. (v) asymptotically approaches c but never quite reaches c no matter how much energy you put in the system (recall that our laboratory accelerates the target particle by applying a constant continuous force (F) which requires us to spend energy). As the particle speeds up towards c more and more of that energy we are using to try to accelerate the particle goes to increasing the particle’s mass (m) instead of (v) as governed by the relationship F=ma. An interesting consequence is that the particle’s momentum (p) does increase linearly over time (t) with constant force (F), even though velocity (v) does not: p = (mv) / √(1 − v²/c²).',
+    d: 'The quantity distance (d) is just the regular distance you can measure at the end of the experiment with a ruler (perhaps a very long ruler). Which is to say, the distance is simply how far the particle traveled from your perspective as a stationary observer in the lab frame. Similarly to time (t), accurately calculating distance from either (a), (v), or both requires introducing the relativistic effects experienced by (a) and (t). Thus, the distance you measure (dʀᴇʟ) will be shorter than the distance predicted by Newtonian calculations (dɴᴇᴡᴛ).',
+  };
+
+  // ---- Physics functions ---------------------------------------------
+  // These are the "pure math" helpers: given some numbers, they return
+  // other numbers (or formatted text). None of them touch the page —
+  // that happens later, in the Rendering section.
+
+  // Formats a number the same way everywhere: always 4 digits after the
+  // decimal point, with thousands separators (e.g. 1234.5 -> "1,234.5000").
+  // If `x` isn't a usable number (null, NaN, Infinity, etc.), it returns
+  // an em dash "—" instead, which is how the UI shows "no value yet".
+  function fmt(x) {
+    if (x === null || x === undefined || typeof x !== 'number' || !isFinite(x)) return '—';
+    return x.toLocaleString('en-US', { minimumFractionDigits: 4, maximumFractionDigits: 4 });
+  }
+
+  // Builds the small grey "alternate units" line shown under a value,
+  // e.g. for acceleration it shows the same number in units of g;
+  // for velocity it shows fractions of light speed and mph; etc.
+  // `key` says which field this is for ('a', 't', 'v', or 'd'), and `x`
+  // is the raw number (in the field's base SI unit) to convert.
+  function companion(key, x) {
+    if (typeof x !== 'number' || !isFinite(x)) return '';
+    if (key === 'a') return fmt(x / G) + ' g';
+    if (key === 'v') return fmt(x / C) + ' c · ' + fmt(x * S_HOUR * MI_PER_M) + ' mph';
+    if (key === 't') return fmt(x / S_HOUR) + ' h · ' + fmt(x / S_DAY) + ' d · ' + fmt(x / S_YEAR) + ' yr';
+    if (key === 'd') return fmt(x / M_PER_AU) + ' AU · ' + fmt(x / M_PER_LY) + ' ly';
+    return '';
+  }
+
+  // The Lorentz factor, γ (gamma) — the standard special-relativity
+  // formula γ = 1 / √(1 − v²/c²). This single number is what makes
+  // relativistic results diverge from Newtonian ones as v approaches c.
+  function gammaOf(v) { return 1 / Math.sqrt(1 - (v * v) / (C * C)); }
+
+  // Given exactly two known quantities, solve for the other two using
+  // the RELATIVISTIC (special-relativity) equations.
+  //
+  //   given — an array of the two known field codes, e.g. ['a', 't']
+  //   vals  — an object holding the typed-in string values, e.g. { a: '9.8', t: '100', v: '', d: '' }
+  //
+  // Returns an object with the two computed values, e.g. { v: ..., d: ... }.
+  // There are 6 possible pairs of "known" values (a+t, a+d, a+v, t+v, t+d,
+  // v+d), so this function is just six if-statements, one per pair, each
+  // implementing that pair's specific pair of formulas.
+  function relSolve(given, vals) {
+    // Two tiny local helper functions used by every branch below:
+    //   n(k) reads field k out of `vals` and converts it to a number.
+    //   h(k) ("has k") checks whether k is one of our two known fields.
+    const n = (k) => parseFloat(vals[k]), h = (k) => given.includes(k);
+    if (h('a') && h('t')) { const a = n('a'), t = n('t'), r = Math.sqrt(1 + Math.pow(a * t / C, 2)); return { v: a * t / r, d: (C * C / a) * (r - 1) }; }
+    if (h('a') && h('d')) { const a = n('a'), d = n('d'), g = 1 + a * d / (C * C); return { v: C * Math.sqrt(1 - 1 / (g * g)), t: Math.sqrt(2 * d / a + d * d / (C * C)) }; }
+    if (h('a') && h('v')) { const a = n('a'), v = n('v'), g = gammaOf(v); return { d: (C * C / a) * (g - 1), t: g * v / a }; }
+    if (h('t') && h('v')) { const t = n('t'), v = n('v'), g = gammaOf(v); return { a: g * v / t, d: (C * C * t / v) * (1 - 1 / g) }; }
+    if (h('t') && h('d')) { const t = n('t'), d = n('d'); return { a: 2 * d / (t * t - d * d / (C * C)), v: 2 * C * C * d * t / (C * C * t * t + d * d) }; }
+    if (h('v') && h('d')) { const v = n('v'), d = n('d'), g = gammaOf(v); return { a: (C * C / d) * (g - 1), t: (d / C) * Math.sqrt((g + 1) / (g - 1)) }; }
+    return {}; // Shouldn't happen in practice — `given` should always match one of the 6 pairs above.
+  }
+
+  // Same idea as relSolve(), but using ordinary Newtonian ("classical")
+  // physics — the SUVAT equations you'd learn before special relativity.
+  // This is what's shown in the "Newtonian" column of the comparison
+  // table, so students can see how far off the classical answer is.
+  function newtonSolve(given, vals) {
+    const n = (k) => parseFloat(vals[k]), h = (k) => given.includes(k);
+    if (h('a') && h('t')) { const a = n('a'), t = n('t'); return { v: a * t, d: 0.5 * a * t * t }; }
+    if (h('a') && h('d')) { const a = n('a'), d = n('d'); return { v: Math.sqrt(2 * a * d), t: Math.sqrt(2 * d / a) }; }
+    if (h('a') && h('v')) { const a = n('a'), v = n('v'); return { d: v * v / (2 * a), t: v / a }; }
+    if (h('t') && h('v')) { const t = n('t'), v = n('v'); return { a: v / t, d: 0.5 * v * t }; }
+    if (h('t') && h('d')) { const t = n('t'), d = n('d'); return { a: 2 * d / (t * t), v: 2 * d / t }; }
+    if (h('v') && h('d')) { const v = n('v'), d = n('d'); return { a: v * v / (2 * d), t: 2 * d / v }; }
+    return {};
+  }
+
+  // ---- State ------------------------------------------------------------
+  // "State" is just a plain object that holds everything the app needs to
+  // remember between user actions — what's been typed, and which "more
+  // information" panels are open. There's exactly one calculator on the
+  // page, so there's exactly one state object (no need for a fancier
+  // state-management library here).
+  //
+  //   values      — the raw text currently in each of the 4 input boxes.
+  //   order       — the field codes ('a'/'t'/'v'/'d') that currently have
+  //                 a value, listed in the order they were last edited
+  //                 (oldest first). Only the FIRST TWO of these are
+  //                 treated as the "known" values to solve from — see
+  //                 setField() below for why, and computeCalc() for how
+  //                 it's used.
+  //   openDetails — which fields currently have their "More information"
+  //                 panel expanded, e.g. { a: true } means the
+  //                 acceleration panel is open.
+
+  let state = {
+    values: { a: '', t: '', v: '', d: '' },
+    order: [],
+    openDetails: {},
+  };
+
+  // Called whenever the user types into one of the four input boxes.
+  // `k` is which field changed ('a', 't', 'v', or 'd'); `val` is its new
+  // text content.
+  //
+  // Besides storing the new text, this keeps `order` up to date: it
+  // removes `k` from wherever it was in the list (it's about to be
+  // re-added, or is now blank), drops any other field that's become
+  // blank, and — if the new value isn't blank — adds `k` to the END of
+  // the list. That means `order` is always "still-filled-in fields,
+  // oldest edit first", which is exactly what computeCalc() needs to
+  // decide which two fields are the "known" ones.
+  function setField(k, val) {
+    state.values = { ...state.values, [k]: val }; // `{...state.values, [k]: val}` makes a fresh copy of `values` with just this one field changed.
+    let ord = state.order.filter((key) => key !== k && (state.values[key] + '').trim() !== '');
+    if ((val + '').trim() !== '') ord = [...ord, k];
+    state.order = ord;
+  }
+
+  // Clears every field and closes every "more information" panel —
+  // wired up to the Reset button.
+  function resetAll() {
+    state = { values: { a: '', t: '', v: '', d: '' }, order: [], openDetails: {} };
+  }
+
+  // Flips a single field's "more information" panel open/closed.
+  function toggleDetails(k) {
+    state.openDetails = { ...state.openDetails, [k]: !state.openDetails[k] };
+  }
+
+  // ---- Derive render data from state -------------------------------------
+  // computeCalc() is the "brain" of the app. Every time anything changes
+  // (a keystroke, a details toggle, a reset), this function re-runs from
+  // scratch, reads the current `state`, and works out EVERYTHING the page
+  // needs to display: which fields are inputs vs. computed results, what
+  // their values/companion text/formulas are, the status message, the
+  // Lorentz factor and rapidity, and the relativistic-vs-Newtonian table.
+  // It returns one plain object bundling all of that — nothing here
+  // touches the page directly; see the Rendering section below for that.
+  function computeCalc() {
+    const order = ['a', 't', 'v', 'd']; // The canonical display order — always show rows in this order regardless of typing order.
+
+    // `given` = the two fields currently treated as "known" (what the
+    // user typed in), taken from state.order (oldest-still-filled first,
+    // see setField() above), capped at 2. Everything else gets solved for.
+    const given = state.order.filter((k) => (state.values[k] + '').trim() !== '').slice(0, 2);
+    // Same two fields, but re-arranged into a,t,v,d order — needed because
+    // EQ_BY_VAR's lookup keys are always written that way (e.g. 'a,t', never 't,a').
+    const givenSorted = order.filter((k) => given.includes(k));
+
+    // --- Validation: make sure the two typed-in values make physical sense ---
+    let error = '';
+    for (const k of given) {
+      const val = parseFloat(state.values[k]);
+      if (!isFinite(val) || val <= 0) { error = 'All values must be numbers greater than zero.'; break; }
+      if (k === 'v' && val >= C) { error = 'Velocity must be below the speed of light (299,792,458 m/s).'; break; }
+    }
+    // Extra check specific to the time+distance pair: you can't travel
+    // farther than light would in that time.
+    if (!error && given.includes('t') && given.includes('d')) {
+      const t = parseFloat(state.values.t), d = parseFloat(state.values.d);
+      if (isFinite(t) && isFinite(d) && d >= C * t) error = 'Distance must be less than c × t — nothing outruns light.';
+    }
+
+    // We only have a full, valid answer once exactly 2 fields are known
+    // AND validation passed.
+    const solved = givenSorted.length === 2 && !error;
+    const rel = solved ? relSolve(givenSorted, state.values) : {};
+    const newt = solved ? newtonSolve(givenSorted, state.values) : {};
+
+    // --- Build the 4 field rows (Acceleration, Time, Velocity, Distance) ---
+    const openDetails = state.openDetails || {};
+    const fields = order.map((k) => {
+      const isResult = solved && !given.includes(k); // True for the 2 fields we just solved for.
+      let value, comp;
+      if (isResult) {
+        // This field is a computed answer — format the solved number and its companion units.
+        value = fmt(rel[k]);
+        comp = companion(k, rel[k]);
+      } else {
+        // This field is still a live input box — show exactly what the user typed,
+        // plus a companion-units preview if it currently parses as a valid number.
+        value = state.values[k];
+        const p = parseFloat(state.values[k]);
+        comp = (state.values[k] + '').trim() !== '' && isFinite(p) ? companion(k, p) : '';
+      }
+      // Each field becomes one plain object describing everything its row needs to show.
+      // The Rendering section below turns these objects into actual HTML.
+      return {
+        key: k,
+        label: META[k].label,
+        symbol: META[k].symbol,
+        unit: META[k].unit,
+        isResult,
+        isInput: !isResult,
+        value,
+        companion: comp,
+        placeholder: '0',
+        formula: isResult ? ((EQ_BY_VAR[givenSorted.join(',')] || {})[k] || '') : '',
+        showDetails: !!openDetails[k],
+        details: DETAILS[k],
+        detailsLabel: openDetails[k] ? 'Hide information ⌃' : 'More information ⌄',
+      };
+    });
+
+    // --- Lorentz factor (γ) and rapidity, shown in "Useful Relativity Quantities" ---
+    // These can come from either a directly-typed velocity or a computed
+    // one — whichever is available and physically valid (0 < v < c).
+    let vNum = null;
+    if (given.includes('v')) { const pv = parseFloat(state.values.v); if (isFinite(pv) && pv > 0 && pv < C) vNum = pv; }
+    else if (solved && isFinite(rel.v)) vNum = rel.v;
+    const hasV = vNum !== null;
+
+    // --- Relativistic vs. Newtonian comparison table ---
+    // Only the two SOLVED fields get a comparison row (the two typed-in
+    // "given" values are identical in both physics models, so comparing
+    // them would be meaningless).
+    const computedKeys = solved ? order.filter((k) => !given.includes(k)) : [];
+    let comparison = computedKeys.map((k) => {
+      const rv = rel[k], nv = newt[k];
+      // Percent difference between the relativistic and Newtonian answers.
+      const pct = (isFinite(rv) && rv !== 0) ? Math.abs(rv - nv) / Math.abs(rv) * 100 : NaN;
+      return { label: META[k].label, symbol: META[k].symbol, unit: META[k].unit, relVal: fmt(rv), newtVal: fmt(nv), pct: 'Δ ' + fmt(pct) + ' %' };
+    });
+    // The table always shows exactly 2 rows, even before anything is solved —
+    // pad with placeholder dashes so the layout doesn't jump around.
+    while (comparison.length < 2) comparison.push({ label: '', symbol: '', unit: '', relVal: '—', newtVal: '—', pct: '—' });
+
+    // --- The status message shown near the top of the card ---
+    const status = error ? error
+      : solved ? 'Solved — relativistic, constant proper acceleration.'
+        : given.length === 1 ? 'Enter one more value to solve.'
+          : 'Enter any two kinematics values to begin.';
+
+    // Everything the Rendering section needs, bundled into one object.
+    return {
+      fields,
+      status,
+      isError: !!error,
+      hasV,
+      gamma: hasV ? fmt(gammaOf(vNum)) : '—',
+      rapidity: hasV ? fmt(Math.atanh(vNum / C)) : '—',
+      comparison,
+    };
+  }
+
+  // ---- Rendering ----------------------------------------------------------
+  // "Rendering" means turning the plain data from computeCalc() into
+  // actual HTML on the page (this is the part of the app that talks to
+  // the "DOM" — the browser's live representation of the page). The
+  // approach here is simple: every time something changes, we build a
+  // fresh HTML string for the affected part of the page and drop it in
+  // with `.innerHTML = ...`, then re-attach click/typing listeners to the
+  // new elements. It's less clever than a framework like React, but easy
+  // to follow line by line.
+
+  // Turns user-typed or computed text into HTML-safe text before we ever
+  // put it inside an HTML string. Without this, if someone typed
+  // something like `<script>` into an input box, it could get interpreted
+  // as real HTML/code instead of harmless text. Escaping replaces the
+  // special characters (&, <, >, ", ') with their safe HTML equivalents.
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+
+  // Builds the HTML for a field that's still an editable input box
+  // (the "backtick" strings below are template literals — a JS feature
+  // that lets you build a string across multiple lines and insert
+  // `${expressions}` directly into the text).
+  function inputBlockHTML(f) {
+    const companionHtml = f.companion ? `<div class="ck-companion">${escapeHtml(f.companion)}</div>` : '';
+    return `
+      <div class="ck-input-wrap">
+        <input type="text" inputmode="decimal" class="ck-input" data-key="${f.key}" value="${escapeHtml(f.value)}" placeholder="${escapeHtml(f.placeholder)}">
+        ${companionHtml}
+      </div>`;
+  }
+
+  // Builds the HTML for a field that's now a computed, read-only result
+  // (value + "Computed" badge + companion units + the formula used).
+  function resultBlockHTML(f) {
+    const companionHtml = f.companion ? `<div class="ck-companion">${escapeHtml(f.companion)}</div>` : '';
+    const formulaHtml = f.formula ? `<div class="ck-formula">${escapeHtml(f.formula)}</div>` : '';
+    return `
+      <div class="ck-result-wrap">
+        <div class="ck-result-row">
+          <span class="ck-result-value">${escapeHtml(f.value)}</span>
+          <span class="ck-badge">Computed</span>
+        </div>
+        ${companionHtml}
+        ${formulaHtml}
+      </div>`;
+  }
+
+  // Builds the HTML for one whole field row: the symbol/label/unit on the
+  // left, then either the input box or the result block on the right
+  // (decided by inputBlockHTML vs. resultBlockHTML), then the
+  // "More information" text underneath if it's expanded.
+  function fieldRowHTML(f) {
+    const details = f.showDetails ? `<div class="ck-details-panel">${escapeHtml(f.details)}</div>` : '';
+    return `
+      <div class="ck-field-row">
+        <div class="ck-field-content">
+          <div class="ck-field-left">
+            <span class="ck-field-symbol">${escapeHtml(f.symbol)}</span>
+            <div>
+              <div class="ck-field-heading">
+                <div class="ck-field-label">${escapeHtml(f.label)}</div>
+                <button type="button" class="ck-details-btn" data-toggle-details data-key="${f.key}">${escapeHtml(f.detailsLabel)}</button>
+              </div>
+              <div class="ck-field-unit">${escapeHtml(f.unit)}</div>
+            </div>
+          </div>
+          ${f.isInput ? inputBlockHTML(f) : resultBlockHTML(f)}
+        </div>
+        ${details}
+      </div>`;
+  }
+
+  // Builds the HTML for one row of the "Relativistic vs. Newtonian" table.
+  function comparisonRowHTML(c) {
+    return `
+      <div class="ck-compare-row">
+        <span class="ck-compare-quantity">${escapeHtml(c.label)} <span class="ck-compare-symbol">${escapeHtml(c.symbol)}</span></span>
+        <span class="ck-compare-rel">${escapeHtml(c.relVal)} <span class="ck-compare-unit">${escapeHtml(c.unit)}</span></span>
+        <span class="ck-compare-newt">${escapeHtml(c.newtVal)}</span>
+        <span class="ck-compare-pct">${escapeHtml(c.pct)}</span>
+      </div>`;
+  }
+
+  // Redraws the 4 field rows and reattaches their event listeners
+  // ("event listener" = a function the browser calls when something
+  // happens, like a click or a keystroke).
+  //
+  // Tricky part: every time the user types a character, we throw away
+  // and rebuild ALL the field HTML (simplest way to keep the input-vs-
+  // result swapping and companion-text updates all in sync). But
+  // replacing an <input> element with a brand new one would normally
+  // make the browser lose focus and the text cursor — annoying while
+  // typing! So before rebuilding, we remember which input was focused
+  // and where the cursor was, and restore both afterwards.
+  function renderFields(fields) {
+    const container = document.getElementById('fields');
+
+    const active = document.activeElement; // The element currently focused (if any).
+    let focusedKey = null, selStart = null, selEnd = null;
+    if (active instanceof HTMLInputElement && active.dataset.key && container.contains(active)) {
+      focusedKey = active.dataset.key;
+      selStart = active.selectionStart;
+      selEnd = active.selectionEnd;
+    }
+
+    // Rebuild all 4 rows from scratch as one HTML string, and drop it into the page.
+    container.innerHTML = fields.map(fieldRowHTML).join('');
+
+    // Wire up "typing in this box updates the state and redraws everything".
+    container.querySelectorAll('input[data-key]').forEach((inp) => {
+      inp.addEventListener('input', (e) => {
+        setField(inp.dataset.key, e.target.value);
+        render();
+      });
+    });
+
+    // Wire up "clicking More/Hide information toggles that field's panel".
+    container.querySelectorAll('[data-toggle-details]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        toggleDetails(btn.dataset.key);
+        render();
+      });
+    });
+
+    // Put focus (and the text cursor) back where it was before the rebuild.
+    if (focusedKey) {
+      const el = container.querySelector(`input[data-key="${focusedKey}"]`);
+      if (el) {
+        el.focus();
+        try { el.setSelectionRange(selStart, selEnd); } catch (e) { /* not applicable for this input state */ }
+      }
+    }
+  }
+
+  // The main "redraw everything" function. Call this any time the state
+  // changes (typing, toggling details, resetting) and the whole visible
+  // calculator updates to match.
+  function render() {
+    const calc = computeCalc(); // Recompute everything from the current state.
+
+    // Status line near the top (e.g. "Solved — ..." or an error message in red).
+    const statusEl = document.getElementById('status');
+    statusEl.textContent = calc.status;
+    statusEl.classList.toggle('ck-status--error', calc.isError);
+
+    // The 4 field rows (Acceleration/Time/Velocity/Distance).
+    renderFields(calc.fields);
+
+    // The Lorentz factor / rapidity readouts — plain text, no HTML needed.
+    document.getElementById('gamma-value').textContent = calc.gamma;
+    document.getElementById('rapidity-value').textContent = calc.rapidity;
+
+    // The Relativistic vs. Newtonian comparison table.
+    document.getElementById('comparison').innerHTML = calc.comparison.map(comparisonRowHTML).join('');
+  }
+
+  // Wire up the Reset button once, when the script first loads.
+  document.getElementById('reset-btn').addEventListener('click', () => {
+    resetAll();
+    render();
+  });
+
+  // Draw the calculator for the first time as soon as this script runs
+  // (this line runs once, immediately — everything above it is just
+  // defining constants and functions, not doing anything yet).
+  render();
+})();
+</script>
+</body>
+</html>
